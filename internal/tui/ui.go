@@ -1085,7 +1085,7 @@ func (m *Model) markNotificationAsRead(notificationId string) {
 }
 
 func (m *Model) onViewedRowChanged() tea.Cmd {
-	m.prView.SetSummaryViewLess()
+	m.prView.SetSummaryViewMore()
 	m.prView.GoToFirstTab()
 	sidebarCmd := m.syncSidebar()
 	enrichCmd := m.prView.EnrichCurrRow()
