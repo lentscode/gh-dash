@@ -175,6 +175,53 @@ func TestPromptConfirmation_NilSection(t *testing.T) {
 	require.Nil(t, cmd, "promptConfirmation should return nil when section is nil")
 }
 
+func TestMergeConfirmationDefaultsToYes(t *testing.T) {
+	for _, view := range []config.ViewType{config.PRsView, config.NotificationsView} {
+		t.Run(string(view), func(t *testing.T) {
+			cfg, err := config.ParseConfig(config.Location{
+				ConfigFlag: "../config/testdata/test-config.yml", SkipGlobalConfig: true,
+			})
+			require.NoError(t, err)
+			cfg.Keybindings.Prs = nil // Exercise the built-in m action, not the fixture's override.
+			started := false
+			ctx := &context.ProgramContext{
+				Config: &cfg, View: view,
+				StartTask: func(context.Task) tea.Cmd { started = true; return nil },
+			}
+			ctx.Theme = theme.ParseTheme(&cfg)
+			ctx.Styles = context.InitStyles(ctx.Theme)
+			m := Model{
+				ctx: ctx, keys: keys.Keys, footer: footer.NewModel(ctx),
+				prView: prview.NewModel(ctx), issueSidebar: issueview.NewModel(ctx),
+				notificationView: notificationview.NewModel(ctx),
+			}
+			pr := &data.PullRequestData{Number: 42, Title: "Fix login"}
+			pr.Repository.NameWithOwner = "owner/repo"
+			prSection := prssection.NewModel(0, ctx, config.PrsSectionConfig{}, time.Now(), time.Now())
+			prSection.Prs = []prrow.Data{{Primary: pr}}
+			m.prs = []section.Section{&prSection}
+			if view == config.NotificationsView {
+				defer keys.SetNotificationSubject(keys.NotificationSubjectNone)
+				m.notificationView.SetSubjectPR(&prrow.Data{Primary: pr}, "notification-42")
+				keys.SetNotificationSubject(keys.NotificationSubjectPR)
+			}
+
+			m.Update(tea.KeyPressMsg{Code: 'm', Text: "m"})
+			require.False(t, started, "pressing m must wait for confirmation")
+			if view == config.PRsView {
+				require.True(t, prSection.IsPromptConfirmationShown)
+				require.Contains(t, prSection.GetPromptConfirmation(), "(Y/n)")
+			} else {
+				require.Equal(t, "pr_merge", m.notificationView.GetPendingAction())
+			}
+
+			_, cmd := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			require.True(t, started, "Enter should accept the Yes default")
+			require.NotNil(t, cmd)
+		})
+	}
+}
+
 func TestNotificationView_SwitchViewWithSKey(t *testing.T) {
 	// Test that pressing 's' in Notifications view switches to PRs view
 	cfg, err := config.ParseConfig(config.Location{

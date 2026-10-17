@@ -45,7 +45,7 @@ func TestSetPendingPRAction(t *testing.T) {
 			action:         "merge",
 			prNumber:       100,
 			expectedAction: "pr_merge",
-			expectedPrompt: "Are you sure you want to merge PR #100? (y/N)",
+			expectedPrompt: "Are you sure you want to merge PR #100? (Y/n)",
 		},
 		{
 			name:           "update action",
@@ -220,6 +220,41 @@ func TestUpdate_EnterDoesNotConfirm(t *testing.T) {
 
 	require.Empty(t, action, "Enter should not confirm when default is No")
 	require.False(t, newModel.HasPendingAction(), "pending action should be cleared")
+}
+
+func TestUpdate_EnterConfirmsOnlyMerge(t *testing.T) {
+	for _, action := range []string{"close", "reopen", "ready", "merge", "update", "approveWorkflows"} {
+		t.Run(action, func(t *testing.T) {
+			m := NewModel(&context.ProgramContext{})
+			m.SetSubjectPR(&prrow.Data{Primary: &data.PullRequestData{Number: 42}}, "notification-42")
+			m.SetPendingPRAction(action)
+			updated, confirmed := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			if action == "merge" {
+				require.Equal(t, "pr_merge", confirmed)
+			} else {
+				require.Empty(t, confirmed)
+			}
+			require.False(t, updated.HasPendingAction())
+		})
+	}
+}
+
+func TestUpdate_MergeCanStillBeCancelled(t *testing.T) {
+	for _, key := range []tea.KeyPressMsg{
+		{Code: 'n', Text: "n"},
+		{Code: 'N', Text: "N"},
+		{Code: tea.KeyEsc},
+		{Code: 'c', Mod: tea.ModCtrl},
+	} {
+		t.Run(key.String(), func(t *testing.T) {
+			m := NewModel(&context.ProgramContext{})
+			m.SetSubjectPR(&prrow.Data{Primary: &data.PullRequestData{Number: 42}}, "notification-42")
+			m.SetPendingPRAction("merge")
+			updated, action := m.Update(key)
+			require.Empty(t, action)
+			require.False(t, updated.HasPendingAction())
+		})
+	}
 }
 
 func TestUpdate_CancelWithN(t *testing.T) {

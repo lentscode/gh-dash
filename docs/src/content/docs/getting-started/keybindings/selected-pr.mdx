@@ -73,8 +73,14 @@ By default `dash` only displays the first 5 lines.
 
 ## `m` - Merge PR
 
-Press <kbd>m</kbd> to merge the PR. When you do, the dashboard uses the `gh pr merge` command to
-merge the PR.
+Press <kbd>m</kbd> to show the merge confirmation, which defaults to Yes: `(Y/n)`.
+Press <kbd>Enter</kbd> to continue, type `n` then press <kbd>Enter</kbd> to decline,
+or press <kbd>Esc</kbd> to cancel. The same Yes default applies when viewing a PR notification.
+
+After confirmation, the dashboard runs `gh pr merge --squash --delete-branch`, which combines
+the PR commits into one commit and deletes the remote branch after merging. GitHub CLI uses
+the repository's default commit message and does not show commit-editing or submission prompts.
+For example, press <kbd>m</kbd>, then <kbd>Enter</kbd> to squash and merge immediately.
 
 ## `u` - Update PR
 

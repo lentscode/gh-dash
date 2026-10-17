@@ -325,8 +325,11 @@ When viewing a PR or Issue notification, destructive actions (close, reopen, mer
 
 1. User presses action key (e.g., `x` for close)
 2. Footer displays: "Are you sure you want to close PR #123? (y/N)"
-3. User presses `y`, `Y`, or `Enter` to confirm, any other key cancels
+3. User presses `y` or `Y` to confirm, any other key cancels. Merge also accepts `Enter`.
 4. Action executes via the `tasks` package (same as PR/Issue views)
+
+Merge confirmation uses `(Y/n)` and accepts Enter as Yes, then runs
+`gh pr merge --squash --delete-branch` immediately. Other actions keep their No default.
 
 This design is necessary because:
 - The notification section doesn't understand PR/Issue-specific actions
@@ -336,7 +339,7 @@ This design is necessary because:
 The confirmation state is managed by `notificationView.Model`:
 - `pendingAction` field tracks the pending action (e.g., "pr_close", "issue_reopen")
 - `SetPendingPRAction()` / `SetPendingIssueAction()` set the pending action and return the confirmation prompt text
-- `Update()` method handles confirmation key presses (y/Y/Enter to confirm, any other key cancels)
+- `Update()` handles `y`/`Y` to confirm, and accepts `Enter` for merge's Yes default. Other keys cancel.
 - `onConfirmAction` callback is invoked when confirmed, which `ui.go` sets to `executeNotificationAction()`
 
 This encapsulation keeps confirmation logic close to the view that displays it, while `ui.go` coordinates between the footer prompt and action execution.
