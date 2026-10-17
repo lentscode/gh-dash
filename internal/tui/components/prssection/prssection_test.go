@@ -1,6 +1,7 @@
 package prssection
 
 import (
+	"fmt"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -108,14 +109,20 @@ func TestConfirmation_AllActions(t *testing.T) {
 	actions := []string{"close", "reopen", "ready", "merge", "update", "approveWorkflows"}
 
 	for _, action := range actions {
-		t.Run(action+"_empty_input_does_not_confirm", func(t *testing.T) {
+		t.Run(action+"_default", func(t *testing.T) {
 			m := newTestModel(action)
+			started := false
+			m.Ctx.StartTask = func(context.Task) tea.Cmd {
+				started = true
+				return nil
+			}
 
 			msg := tea.KeyPressMsg{Code: tea.KeyEnter}
 			_, _ = m.Update(msg)
 
 			require.False(t, m.IsPromptConfirmationShown,
 				"empty input should dismiss prompt for action %q", action)
+			require.Equal(t, action == "merge", started, "only merge defaults to Yes")
 		})
 
 		t.Run(action+"_explicit_y", func(t *testing.T) {
@@ -127,6 +134,23 @@ func TestConfirmation_AllActions(t *testing.T) {
 
 			require.NotNil(t, cmd,
 				"explicit y should confirm for action %q", action)
+		})
+	}
+}
+
+func TestMergeConfirmationCancellation(t *testing.T) {
+	for _, input := range []string{"n", "N", "no"} {
+		t.Run(fmt.Sprintf("input_%s", input), func(t *testing.T) {
+			m := newTestModel("merge")
+			started := false
+			m.Ctx.StartTask = func(context.Task) tea.Cmd {
+				started = true
+				return nil
+			}
+			m.PromptConfirmationBox.SetValue(input)
+			m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+			require.False(t, started)
+			require.False(t, m.IsPromptConfirmationShown)
 		})
 	}
 }

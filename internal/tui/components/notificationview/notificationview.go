@@ -92,16 +92,20 @@ func (m *Model) SetPendingPRAction(action string) string {
 	m.pendingAction = "pr_" + action
 
 	actionDisplay := action
+	defaultChoice := "y/N"
 	switch action {
+	case "merge":
+		defaultChoice = "Y/n"
 	case "ready":
 		actionDisplay = "mark as ready"
 	case "approveWorkflows":
 		actionDisplay = "approve all workflows for"
 	}
 	return fmt.Sprintf(
-		"Are you sure you want to %s PR #%d? (y/N)",
+		"Are you sure you want to %s PR #%d? (%s)",
 		actionDisplay,
 		m.subjectPR.GetNumber(),
+		defaultChoice,
 	)
 }
 
@@ -145,12 +149,13 @@ func (m Model) Update(msg tea.Msg) (Model, string) {
 
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		if msg.String() == "y" || msg.String() == "Y" {
+		if msg.String() == "y" || msg.String() == "Y" ||
+			(msg.String() == "enter" && m.pendingAction == "pr_merge") {
 			action := m.pendingAction
 			m.pendingAction = ""
 			return m, action
 		}
-		// Any other key cancels the confirmation
+		// Enter accepts only merge's Yes default; other keys cancel.
 		m.pendingAction = ""
 	}
 

@@ -171,6 +171,8 @@ func MergePR(ctx *context.ProgramContext, section SectionIdentifier, pr data.Row
 		"pr",
 		"merge",
 		fmt.Sprint(prNumber),
+		"--squash",
+		"--delete-branch",
 		"-R",
 		pr.GetRepoNameWithOwner(),
 	)
